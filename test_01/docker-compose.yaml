@@ -1,0 +1,33 @@
+services:
+  app:
+    build: .
+    command: >
+      uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - redis
+    restart: always
+  redis:
+    image: redis:7
+    ports:
+      - "6379:6379"
+
+  celery_beat:
+    build: .
+    container_name: celery_beat
+    command: >
+      celery -A app.celery_app beat -l info
+    depends_on:
+      - redis
+    restart: always
+
+  celery_worker:
+    build: .
+    command: >
+      celery -A app.celery_app worker -l info -c 2
+    depends_on:
+      - redis
+    restart: always
+    deploy:
+      replicas: 2

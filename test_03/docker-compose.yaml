@@ -1,0 +1,48 @@
+services:
+  fastapi:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    container_name: beat_fastapi
+    networks:
+      - local-net
+    environment:
+      - REDIS_DATA_URL=redis://redis:6379/4
+      - REDBEAT_REDIS_URL=redis://redis:6379/2
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    ports:
+      - "8000:8000"
+    restart: always
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: ./background/Dockerfile
+    image: beat_celery_worker
+    networks:
+      - local-net
+    environment:
+      - REDIS_DATA_URL=redis://redis:6379/4
+      - REDBEAT_REDIS_URL=redis://redis:6379/2
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    restart: always
+
+  celery_beat:
+    build: .
+    container_name: beat_celery_beat
+    networks:
+      - local-net
+    environment:
+      - REDIS_DATA_URL=redis://redis:6379/4
+      - REDBEAT_REDIS_URL=redis://redis:6379/2
+      - CELERY_BROKER_URL=redis://redis:6379/1
+      - CELERY_RESULT_BACKEND=redis://redis:6379/1
+    restart: always
+    command: >
+      celery beat -A background.celery.celery_app -S redbeat.RedBeatScheduler
+
+networks:
+  local-net:
+    external: true
